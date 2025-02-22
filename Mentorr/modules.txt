@@ -1,0 +1,16 @@
+module1{
+1: Introduction to C++ Basics
+Topics:
+- Printing with cout
+- Variables and Data Types
+- Writing a simple C++ program
+}
+
+module2{
+2: Loops and Conditions
+Topics:
+- For loops
+- While loops
+- If-else conditions
+- Nested loops
+}

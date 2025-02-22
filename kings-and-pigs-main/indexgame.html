@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Block Shooter Game</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      canvas {
+        border: 2px solid white;
+        /* Remove or comment out the background color */
+        /* background: #2c3e50; */
+        width: 1500px;
+        height: 500px;
+      }
+      .game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .health-display {
+        margin-bottom: 10px;
+        font-family: Arial, sans-serif;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .bottom-content {
+        width: 1500px;
+        min-height: 4px;
+        background: #34495e;
+        padding: 0px;
+        margin-top: 0px;
+      }
+      .chat-container {
+        display: flex;
+        width: 1500px;
+        height: 400px;
+        margin-top: 20px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .chat-sidebar {
+        width: 30%;
+        background: #f5f5f5;
+        padding: 20px;
+        border-right: 1px solid #ddd;
+      }
+      .chat-main {
+        width: 70%;
+        display: flex;
+        flex-direction: column;
+      }
+      .chat-messages {
+        flex-grow: 1;
+        padding: 0;
+        overflow-y: auto;
+        background: #f8f9fa;
+      }
+      .chat-input {
+        display: flex;
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #ddd;
+      }
+      .send-button {
+        padding: 10px 20px;
+        background: #ffe599;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .send-button:hover {
+        background: #ffd966;
+      }
+      .message {
+        padding: 10px;
+        margin: 5px 0;
+        background: #f8f9fa;
+        border-radius: 4px;
+      }
+      .chat-history {
+        margin-top: 20px;
+        color: #666;
+      }
+      h3 {
+        margin: 0;
+        color: #333;
+      }
+      .message-container {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      .code-input {
+        width: 100%;
+        height: 100%;
+        border: none;
+        resize: none;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 14px;
+        box-sizing: border-box;
+        background: white;
+        outline: none; /* Removes the focus outline */
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <div class="game-container">
+      <div class="health-display">
+        <div>Player Health: <span id="playerHealth">100</span></div>
+        <div>Computer Health: <span id="computerHealth">100</span></div>
+      </div> -->
+      <canvas id="gameCanvas"></canvas>
+      <div class="bottom-content">
+        <h2>Bottom Content</h2>
+      </div>
+      <div class="chat-container">
+        <div class="chat-sidebar">
+          <h3>Task Description</h3>
+          <div class="chat-history">
+            <textarea id="taskDescription" readonly style="width: 100%; height: 300px; border: none; resize: none; padding: 10px; background: #f5f5f5;"></textarea>
+          </div>
+        </div>
+        <div class="chat-main">
+          <div class="chat-messages">
+            <div class="message-container">
+              <textarea 
+                id="userInput" 
+                class="code-input"
+                placeholder="Write your code here..."
+                spellcheck="false"
+              ></textarea>
+            </div>
+          </div>
+          <div class="chat-input">
+            <button class="send-button">Submit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById('gameCanvas');
+      canvas.width = 1500;
+      canvas.height = 500;
+      const ctx = canvas.getContext('2d');
+      
+      // Load all character images
+      const playerImage = new Image();
+      playerImage.src = './img/Character_1.png';  // Default standing image
+      
+      // Load frame 1 images (5 images)
+      const frame1Images = [];
+      for(let i = 1; i <= 5; i++) {
+        const img = new Image();
+        img.src = `./img/frame_1_${i}.png`;
+        frame1Images.push(img);
+      }
+      
+      // Load frame 2 images (5 images)
+      const frame2Images = [];
+      for(let i = 1; i <= 5; i++) {
+        const img = new Image();
+        img.src = `./img/frame_2_${i}.png`;
+        frame2Images.push(img);
+      }
+      
+      const computerImage = new Image();
+      computerImage.src = './img/Character_2.png';
+      
+      const backgroundImage = new Image();
+      backgroundImage.src = './img/backgroundImage.png';
+      
+      const player = {
+        x: 50,
+        y: canvas.height - 167,
+        width: 56,
+        height: 71,
+        health: 100,
+        color: '#3498db',
+        isAnimating: false,
+        currentFrame: 0,
+        currentSequence: 0,
+        animationFrames: [frame1Images, frame2Images],
+        lastFrameTime: 0
+      };
+
+      const computer = {
+        x: canvas.width - 167,
+        y: canvas.height - 175,
+        width: 70,
+        height: 85,
+        health: 100,
+        color: '#e74c3c',
+        isAnimating: false,
+        currentFrame: 0,
+        currentSequence: 0,
+        animationFrames: 0,  // We're not animating the computer yet
+        lastFrameTime: 0
+      };
+
+      const bullets = [];
+      const computerBullets = [];
+
+      function drawBlock(block) {
+        const currentTime = Date.now();
+        
+        if (block.isAnimating && block.animationFrames) {  // Check if animation frames exist
+          // Calculate which image to show based on time
+          if (currentTime - block.lastFrameTime > 333) { // 333ms for 3 FPS
+            block.currentFrame = (block.currentFrame + 1) % 5;
+            block.lastFrameTime = currentTime;
+          }
+          
+          // Draw current animation frame if available, otherwise fall back to default image
+          try {
+            const frameImage = block.animationFrames[block.currentSequence][block.currentFrame];
+            if (frameImage && frameImage.complete) {
+              ctx.drawImage(frameImage, block.x, block.y, block.width, block.height);
+            } else {
+              const image = block === player ? playerImage : computerImage;
+              ctx.drawImage(image, block.x, block.y, block.width, block.height);
+            }
+          } catch (error) {
+            // Fallback to default image if there's any error
+            const image = block === player ? playerImage : computerImage;
+            ctx.drawImage(image, block.x, block.y, block.width, block.height);
+          }
+        } else {
+          // Draw default standing image
+          const image = block === player ? playerImage : computerImage;
+          ctx.drawImage(image, block.x, block.y, block.width, block.height);
+        }
+
+        // Draw health bar - modified to maintain consistent width
+        const healthPercent = block.health / (block === computer ? 100 : 100); // Both now use 100 as max
+        const healthBarWidth = block.width; // Keep bar width same as block width
+        const healthBarHeight = 10;
+        const healthBarY = block.y - 20;
+        
+        // Background of health bar (empty part)
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        ctx.fillRect(block.x, healthBarY, healthBarWidth, healthBarHeight);
+        
+        // Filled part of health bar
+        ctx.fillStyle = `rgb(${255 * (1 - healthPercent)}, ${255 * healthPercent}, 0)`;
+        ctx.fillRect(block.x, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
+        
+        // Border of health bar
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(block.x, healthBarY, healthBarWidth, healthBarHeight);
+      }
+
+      function drawBullet(bullet) {
+        ctx.save();
+        const trailLength = 5;
+        for(let i = 0; i < trailLength; i++) {
+          const trailPos = {
+            x: bullet.x - (bullet.vx * i * 2),
+            y: bullet.y
+          };
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(100, 100, 100, ${(trailLength - i) / trailLength * 0.3})`;
+          ctx.arc(trailPos.x, trailPos.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.fillStyle = '#FFD700';
+        const bulletLength = 12;
+        const bulletWidth = 3;
+        const angle = bullet.vx > 0 ? 0 : Math.PI;
+        ctx.translate(bullet.x, bullet.y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(-bulletLength/2, 0);
+        ctx.lineTo(bulletLength/2, 0);
+        ctx.lineTo(bulletLength/2 - 2, -bulletWidth);
+        ctx.lineTo(-bulletLength/2, -bulletWidth);
+        ctx.lineTo(-bulletLength/2, 0);
+        ctx.fill();
+
+        const gradient = ctx.createLinearGradient(
+          -bulletLength/2, -bulletWidth,
+          bulletLength/2, 0
+        );
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0.2)');
+        
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        if (bullet.vx > 0 && bullet.x < player.x + player.width + 50 ||
+            bullet.vx < 0 && bullet.x > computer.x - 50) {
+          ctx.beginPath();
+          const flashSize = Math.random() * 5 + 10;
+          ctx.fillStyle = 'rgba(255, 200, 0, 0.6)';
+          ctx.arc(bullet.vx > 0 ? -bulletLength : bulletLength, 0, flashSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      function updateHealth() {
+        document.getElementById('playerHealth').textContent = player.health;
+        document.getElementById('computerHealth').textContent = computer.health;
+      }
+
+      function checkCollision(bullet, block) {
+        return bullet.x > block.x && 
+               bullet.x < block.x + block.width &&
+               bullet.y > block.y && 
+               bullet.y < block.y + block.height;
+      }
+
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        
+        drawBlock(player);
+        drawBlock(computer);
+
+        for(let i = bullets.length - 1; i >= 0; i--) {
+          bullets[i].x += bullets[i].vx;
+          drawBullet(bullets[i]);
+
+          if(checkCollision(bullets[i], computer)) {
+            computer.health -= 20;
+            bullets.splice(i, 1);
+            updateHealth();
+          }
+
+          if(bullets[i] && bullets[i].x > canvas.width) {
+            bullets.splice(i, 1);
+          }
+        }
+
+        for(let i = computerBullets.length - 1; i >= 0; i--) {
+          computerBullets[i].x += computerBullets[i].vx;
+          drawBullet(computerBullets[i]);
+
+          if(checkCollision(computerBullets[i], player)) {
+            player.health -= 5;
+            computerBullets.splice(i, 1);
+            updateHealth();
+          }
+
+          if(computerBullets[i] && computerBullets[i].x < 0) {
+            computerBullets.splice(i, 1);
+          }
+        }
+
+        if(player.health <= 0) {
+          alert('Game Over! Computer Wins!');
+          resetGame();
+        }
+        if(computer.health <= 0) {
+          alert('Congratulations! You Win!');
+          resetGame();
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      function resetGame() {
+        player.health = 100;
+        computer.health = 100;
+        bullets.length = 0;
+        computerBullets.length = 0;
+        updateHealth();
+      }
+
+      // Add this new function to handle shooting
+      function shootBullet() {
+        if (!player.isAnimating) {
+          player.isAnimating = true;
+          player.currentFrame = 0;
+          player.currentSequence = 0;
+          player.lastFrameTime = Date.now();
+          
+          bullets.push({
+            x: player.x + player.width,
+            y: player.y + player.height/2,
+            vx: 15
+          });
+          
+          canvas.style.transform = 'translateX(2px)';
+          setTimeout(() => {
+            canvas.style.transform = 'none';
+          }, 50);
+
+          setTimeout(() => {
+            player.currentSequence = 1;
+            player.currentFrame = 0;
+          }, 5 * 333);
+
+          setTimeout(() => {
+            player.isAnimating = false;
+            player.currentFrame = 0;
+            player.currentSequence = 0;
+          }, 10 * 333);
+        }
+      }
+
+      // Add this function to handle enemy shooting
+      function enemyShoot() {
+        computer.isAnimating = true;
+        computerBullets.push({
+          x: computer.x,
+          y: computer.y + computer.height/2,
+          vx: -15
+        });
+        
+        canvas.style.transform = 'translateX(-2px)';
+        setTimeout(() => {
+          canvas.style.transform = 'none';
+        }, 50);
+
+        setTimeout(() => {
+          computer.isAnimating = false;
+        }, 200);
+      }
+
+      // Modify the submitCode function to trigger enemy shooting on error
+      async function submitCode() {
+        const userCode = document.getElementById('userInput').value;
+        const taskBox = document.getElementById('taskDescription');
+        const currentChallenge = taskBox.value.split('\n\n')[0];
+        
+        const taskNumber = parseInt(currentChallenge.match(/^\d+/)) || 0;
+
+        try {
+          const response = await fetch('http://localhost:5000/evaluate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code: userCode })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          
+          taskBox.value = 
+              currentChallenge + '\n\n' +
+              '----------------------------------------\n' +
+              'Result:\n' + 
+              result.result;
+          
+          // If there's an error, store it and make enemy shoot
+          if (!result.result.includes('Success')) {
+            enemyShoot();  // Make enemy shoot on error
+            await fetch('http://localhost:5000/store_error', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                error: result.result,
+                task_number: taskNumber
+              })
+            });
+          }
+          
+          // If successful, shoot bullet and prepare for next challenge
+          if (result.result.includes('Success')) {
+            shootBullet();
+            document.getElementById('userInput').value = '';
+            setTimeout(fetchTask, 2000);
+          }
+        } catch (error) {
+          console.error('Error submitting code:', error);
+          const errorMessage = 'Failed to submit code: ' + error.message;
+          
+          // Make enemy shoot on error
+          enemyShoot();
+          
+          // Store the error
+          try {
+            await fetch('http://localhost:5000/store_error', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                error: errorMessage,
+                task_number: taskNumber
+              })
+            });
+          } catch (e) {
+            console.error('Failed to store error:', e);
+          }
+
+          taskBox.value = 
+              currentChallenge + '\n\n' +
+              '----------------------------------------\n' +
+              'Error:\n' +
+              'Failed to submit code. Please check:\n' +
+              '1. Server is running\n' +
+              '2. Code has no syntax errors\n' +
+              '3. Connection is stable\n\n' +
+              'Technical details: ' + error.message;
+        }
+      }
+
+      // Add event listener for submit button
+      document.querySelector('.send-button').addEventListener('click', submitCode);
+
+      // Function to fetch and display task
+      async function fetchTask() {
+        try {
+          const response = await fetch('http://localhost:5000/get-challenge');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          document.getElementById('taskDescription').value = 
+              data.challenge + '\n\n' +
+              '----------------------------------------\n' +
+              'Submit your code in the box on the right.\n' +
+              'Results will appear here after submission.';
+        } catch (error) {
+          console.error('Error fetching task:', error);
+          document.getElementById('taskDescription').value = 
+              'Error loading task...\n\n' +
+              '----------------------------------------\n' +
+              'Error details:\n' +
+              error.message + '\n\n' +
+              'Please make sure the server is running at http://localhost:5000';
+        }
+      }
+
+      // Modify the DOMContentLoaded event listener to reset the game state first
+      document.addEventListener('DOMContentLoaded', async function() {
+          // Reset the game level first
+          try {
+              await fetch('http://localhost:5000/reset', {
+                  method: 'POST'
+              });
+          } catch (error) {
+              console.error('Error resetting game:', error);
+          }
+
+          // Then fetch the first task
+          fetchTask();
+
+          // Enable the input textarea
+          const userInput = document.getElementById('userInput');
+          userInput.disabled = false;
+          userInput.readOnly = false;
+      });
+
+      gameLoop();
+    </script>
+  </body>
+</html> 
